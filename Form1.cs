@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ExcelDataReader;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -17,6 +18,7 @@ namespace Grls
     {
         delegate void LogPopLineCallback1(String msg);
         delegate void LogPopLineCallback2(String msg);
+        delegate void LogPopLineCallback3(String msg);
         private Grls grls;
         private Grlp grlp;
         public Form1()
@@ -73,6 +75,56 @@ namespace Grls
                 richTextBox2.Refresh();
             }
         }
+        public void LogPopLine3(String msg)
+        {
+            if (this.richTextBox3.InvokeRequired)
+            {
+                LogPopLineCallback3 d = new LogPopLineCallback3(LogPopLine3);
+                this.Invoke(d, new object[] { msg });
+            }
+            else
+            {
+                richTextBox3.Text = msg + "\n" + richTextBox3.Text;
+                richTextBox3.Refresh();
+            }
+        }
+
+        private void buttonExcel_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog1.ShowDialog() == DialogResult.OK)
+            {
+                LogPopLine3(openFileDialog1.FileName);
+                DataSet grlsExcel = null;
+                FileStream stream = File.Open(openFileDialog1.FileName, FileMode.Open, FileAccess.Read);
+                try
+                {
+                    IExcelDataReader excelReader = ExcelReaderFactory.CreateOpenXmlReader(stream);
+                    grlsExcel = excelReader.AsDataSet();
+                    excelReader.Close();
+                }
+                catch (Exception exc) { LogPopLine3(exc.ToString()); }
+                if (grlsExcel != null && grlsExcel.Tables.Count > 0)
+                {
+                    DataTable table = grlsExcel.Tables[0];
+                    LogPopLine3(table.Rows.Count.ToString());
+
+                    List<String> nums = new List<String>();
+                    foreach (DataRow row in table.Rows)
+                    {
+                        String num = row[0] as String;
+                        if (!String.IsNullOrWhiteSpace(num) && !nums.Contains(num))
+                        {
+                            nums.Add(num);
+                        }
+                    }
+                    LogPopLine3(nums.Count.ToString());
+
+                    grls.RegNums = nums;
+
+                }
+                else { LogPopLine3("Excel read as DataSet error."); }
+            }
+        }
     }
 
     public class Grls
@@ -85,7 +137,7 @@ namespace Grls
         private static SqlCommand cmdWriteErr;
         private static SqlCommand cmdGetList;
         private static SqlCommand cmdDelRg;
-        private static SqlCommand cmdAddRg {get; set;}
+        private static SqlCommand cmdAddRg { get; set; }
         private static SqlCommand cmdAddF;
         private static SqlCommand cmdAddU;
         private static SqlCommand cmdAddM;
@@ -93,6 +145,7 @@ namespace Grls
         private static DateTime StartRequestTime;
         private static String CookieSet;
 
+        public List<String> RegNums;
         public Boolean StopFlag;
         private Form1 form1;
         public Grls(Form1 _f1)
@@ -114,20 +167,30 @@ namespace Grls
         }
         public void Download()
         {
-            DataTable regNumList = new DataTable();
-            SqlDataAdapter da = new SqlDataAdapter(cmdGetList);
-            da.Fill(regNumList);
+            if (RegNums == null)
+            {
+                DataTable regNumList = new DataTable();
+                SqlDataAdapter da = new SqlDataAdapter(cmdGetList);
+                da.Fill(regNumList);
 
-            if (regNumList.Rows.Count == 0) { return; }
+                if (regNumList.Rows.Count == 0) { return; }
 
-            // отчёт
-            form1.LogPopLine1(regNumList.Rows.Count.ToString());
+                // отчёт
+                form1.LogPopLine1(regNumList.Rows.Count.ToString());
+
+                RegNums = new List<String>();
+                for (int ri = 0; ri < regNumList.Rows.Count; ri++)
+                {
+                    String regNum = regNumList.Rows[ri][0] as String;
+                    RegNums.Add(regNum);
+                }
+            }
 
             CreateSessionWithGrls();
 
-            for (int ri = 0; ri < regNumList.Rows.Count; ri++)
+            for (int ri = 0; ri < RegNums.Count; ri++)
             {
-                String regNum = regNumList.Rows[ri][0] as String;
+                String regNum = RegNums[ri];
 
                 DownloadRg(regNum);
 
@@ -135,6 +198,7 @@ namespace Grls
                 form1.LogPopLine1(ri.ToString() + ") " + regNum);
                 if (StopFlag) { break; }
             }
+
             // отчёт
             form1.LogPopLine1("--------------");
         }
@@ -381,18 +445,18 @@ namespace Grls
 
             Uri uri = new Uri("http://grls.rosminzdrav.ru/GRLS.aspx" +
                 "?RegNumber=" + regNum.Replace(" ", "%20").Replace("/", "%2F") +
-                "&MnnR=" + 
+                "&MnnR=" +
                 "&lf=" +
                 "&TradeNmR=" +
                 "&OwnerName=" +
                 "&MnfOrg=" +
                 "&MnfOrgCountry=" +
-                "&isfs=0" + 
-                "&isND=-1" + 
-                "&regtype=" + 
-                "&pageSize=50" + 
-                "&order=RegDate" + 
-                "&orderType=desc" + 
+                "&isfs=0" +
+                "&isND=-1" +
+                "&regtype=" +
+                "&pageSize=50" +
+                "&order=RegDate" +
+                "&orderType=desc" +
                 "&pageNum=1");
 
             String receivedString = GetResponse(uri);
@@ -471,10 +535,10 @@ namespace Grls
                     String[] cs = CookieSet.Split(';');
                     if (cs.Length > 0)
                     {
-                        foreach(String c in cs)
+                        foreach (String c in cs)
                         {
                             String[] nv = c.Split('=');
-                            if(nv.Length == 2 && nv[0] == cName)
+                            if (nv.Length == 2 && nv[0] == cName)
                             {
                                 cValue = nv[1];
                                 if (!String.IsNullOrWhiteSpace(cValue))
