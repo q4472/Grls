@@ -108,19 +108,29 @@ namespace Grls
                     DataTable table = grlsExcel.Tables[0];
                     LogPopLine3(table.Rows.Count.ToString());
 
+                    Int32.TryParse(textBox4.Text, out Int32 ColIndex);
+                    Int32.TryParse(textBox2.Text, out Int32 StartIndex);
+                    Int32.TryParse(textBox3.Text, out Int32 StopIndex);
+
                     List<String> nums = new List<String>();
                     foreach (DataRow row in table.Rows)
                     {
-                        String num = row[0] as String;
-                        if (!String.IsNullOrWhiteSpace(num) && !nums.Contains(num))
+                        String num = row[ColIndex] as String;
+                        if (!String.IsNullOrWhiteSpace(num) && num.Length > 3 && num.Substring(0, 3) != "ФС-" && !nums.Contains(num))
                         {
                             nums.Add(num);
                         }
                     }
-                    LogPopLine3(nums.Count.ToString());
 
                     grls.RegNums = nums;
+                    grls.StartIndex = StartIndex;
+                    grls.StopIndex = (StopIndex == 0) ? nums.Count : StopIndex;
 
+                    grlp.RegNums = nums;
+                    grlp.StartIndex = StartIndex;
+                    grlp.StopIndex = (StopIndex == 0) ? nums.Count : StopIndex;
+
+                    LogPopLine3($"{nums.Count}, {ColIndex}, {StartIndex}, {StopIndex}");
                 }
                 else { LogPopLine3("Excel read as DataSet error."); }
             }
@@ -146,6 +156,8 @@ namespace Grls
         private static String CookieSet;
 
         public List<String> RegNums;
+        public Int32 StartIndex;
+        public Int32 StopIndex;
         public Boolean StopFlag;
         private Form1 form1;
         public Grls(Form1 _f1)
@@ -184,11 +196,17 @@ namespace Grls
                     String regNum = regNumList.Rows[ri][0] as String;
                     RegNums.Add(regNum);
                 }
+                StartIndex = 0;
+                StopIndex = RegNums.Count;
             }
 
-            CreateSessionWithGrls();
+            try
+            {
+                CreateSession();
+            }
+            catch (Exception ex) { form1.LogPopLine1(ex.ToString()); return; }
 
-            for (int ri = 0; ri < RegNums.Count; ri++)
+            for (int ri = StartIndex; ri < Math.Min(StopIndex, RegNums.Count); ri++)
             {
                 String regNum = RegNums[ri];
 
@@ -202,7 +220,7 @@ namespace Grls
             // отчёт
             form1.LogPopLine1("--------------");
         }
-        private static void CreateSessionWithGrls()
+        private static void CreateSession()
         {
             Uri uri = new Uri("http://grls.rosminzdrav.ru/GRLS.aspx");
             String receivedString = GetResponse(uri);
@@ -453,7 +471,7 @@ namespace Grls
                 "&MnfOrgCountry=" +
                 "&isfs=0" +
                 "&isND=-1" +
-                "&regtype=" +
+                "&regtype=1" +
                 "&pageSize=50" +
                 "&order=RegDate" +
                 "&orderType=desc" +
@@ -468,7 +486,7 @@ namespace Grls
                 {
                     form1.LogPopLine1("ctl00_plate_dCaptcha");
                     CookieSet = null;
-                    CreateSessionWithGrls();
+                    CreateSession();
                     receivedString = GetResponse(uri);
                 }
 
@@ -646,6 +664,9 @@ namespace Grls
         private static SqlCommand cmdDelRg;
         private static SqlCommand cmdAddRg;
 
+        public List<String> RegNums;
+        public Int32 StartIndex;
+        public Int32 StopIndex;
         public Boolean StopFlag;
         private Form1 form1;
         public Grlp(Form1 _f1)
@@ -661,20 +682,37 @@ namespace Grls
         }
         public void Download()
         {
-            DataTable regNumList = new DataTable();
-            SqlDataAdapter da = new SqlDataAdapter(cmdGetList);
-            da.Fill(regNumList);
-
-            if (regNumList.Rows.Count == 0) { return; }
-
-            // отчёт
-            form1.LogPopLine2(regNumList.Rows.Count.ToString());
-
-            //ArrayList tempLines = new ArrayList();
-
-            for (int ri = 0; ri < regNumList.Rows.Count; ri++)
+            if (RegNums == null)
             {
-                String regNum = regNumList.Rows[ri][0] as String;
+                DataTable regNumList = new DataTable();
+                SqlDataAdapter da = new SqlDataAdapter(cmdGetList);
+                da.Fill(regNumList);
+
+                if (regNumList.Rows.Count == 0) { return; }
+
+                // отчёт
+                form1.LogPopLine2(regNumList.Rows.Count.ToString());
+
+                RegNums = new List<String>();
+                for (int ri = 0; ri < regNumList.Rows.Count; ri++)
+                {
+                    String regNum = regNumList.Rows[ri][0] as String;
+                    RegNums.Add(regNum);
+                }
+                StartIndex = 0;
+                StopIndex = RegNums.Count;
+            }
+
+            try
+            {
+                //CreateSession();
+            }
+            catch (Exception ex) { form1.LogPopLine1(ex.ToString()); return; }
+
+
+            for (int ri = StartIndex; ri < Math.Min(StopIndex, RegNums.Count); ri++)
+            {
+                String regNum = RegNums[ri];
 
                 DownloadRg(regNum);
 
@@ -682,8 +720,14 @@ namespace Grls
                 form1.LogPopLine2(ri.ToString() + ") " + regNum);
                 if (StopFlag) { break; }
             }
+
             // отчёт
             form1.LogPopLine2("--------------");
+        }
+        private static void CreateSession()
+        {
+            Uri uri = new Uri("http://grls.rosminzdrav.ru/PriceLims.aspx");
+            String receivedString = GetResponse(uri);
         }
         private static SqlCommand WriteErr()
         {
