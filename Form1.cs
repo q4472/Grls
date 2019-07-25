@@ -34,7 +34,7 @@ namespace Grls
             Int32.TryParse(textBox2.Text, out Int32 StartIndex);
             Int32.TryParse(textBox3.Text, out Int32 StopIndex);
             grls.StartIndex = StartIndex;
-            grls.StopIndex = (StopIndex == 0) ? grls.RegNums.Count : StopIndex;
+            grls.StopIndex = StopIndex;
             grls.StopFlag = false;
             LogPopLine3($"{grls.StartIndex}, {grls.StopIndex}");
             Thread thread = new Thread(grls.Download);
@@ -45,7 +45,7 @@ namespace Grls
             Int32.TryParse(textBox2.Text, out Int32 StartIndex);
             Int32.TryParse(textBox3.Text, out Int32 StopIndex);
             grlp.StartIndex = StartIndex;
-            grlp.StopIndex = (StopIndex == 0) ? grlp.RegNums.Count : StopIndex;
+            grlp.StopIndex = StopIndex;
             grlp.StopFlag = false;
             LogPopLine3($"{grlp.StartIndex}, {grlp.StopIndex}");
             Thread thread = new Thread(grlp.Download);
