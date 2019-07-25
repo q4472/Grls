@@ -31,13 +31,23 @@ namespace Grls
 
         private void button1_Click(object sender, EventArgs e)
         {
+            Int32.TryParse(textBox2.Text, out Int32 StartIndex);
+            Int32.TryParse(textBox3.Text, out Int32 StopIndex);
+            grls.StartIndex = StartIndex;
+            grls.StopIndex = (StopIndex == 0) ? grls.RegNums.Count : StopIndex;
             grls.StopFlag = false;
+            LogPopLine3($"{grls.StartIndex}, {grls.StopIndex}");
             Thread thread = new Thread(grls.Download);
             thread.Start();
         }
         private void button4_Click(object sender, EventArgs e)
         {
+            Int32.TryParse(textBox2.Text, out Int32 StartIndex);
+            Int32.TryParse(textBox3.Text, out Int32 StopIndex);
+            grlp.StartIndex = StartIndex;
+            grlp.StopIndex = (StopIndex == 0) ? grlp.RegNums.Count : StopIndex;
             grlp.StopFlag = false;
+            LogPopLine3($"{grlp.StartIndex}, {grlp.StopIndex}");
             Thread thread = new Thread(grlp.Download);
             thread.Start();
         }
@@ -109,8 +119,6 @@ namespace Grls
                     LogPopLine3(table.Rows.Count.ToString());
 
                     Int32.TryParse(textBox4.Text, out Int32 ColIndex);
-                    Int32.TryParse(textBox2.Text, out Int32 StartIndex);
-                    Int32.TryParse(textBox3.Text, out Int32 StopIndex);
 
                     List<String> nums = new List<String>();
                     foreach (DataRow row in table.Rows)
@@ -123,14 +131,10 @@ namespace Grls
                     }
 
                     grls.RegNums = nums;
-                    grls.StartIndex = StartIndex;
-                    grls.StopIndex = (StopIndex == 0) ? nums.Count : StopIndex;
 
                     grlp.RegNums = nums;
-                    grlp.StartIndex = StartIndex;
-                    grlp.StopIndex = (StopIndex == 0) ? nums.Count : StopIndex;
 
-                    LogPopLine3($"{nums.Count}, {ColIndex}, {StartIndex}, {StopIndex}");
+                    LogPopLine3($"{nums.Count}, {ColIndex}");
                 }
                 else { LogPopLine3("Excel read as DataSet error."); }
             }
@@ -140,7 +144,7 @@ namespace Grls
     public class Grls
     {
         private static String cnString =
-                "Data Source=192.168.135.14;" +
+                "Data Source=192.168.135.77;" +
                 "Initial Catalog=Grls;" +
                 "Integrated Security=True";
         private static SqlConnection cn;
@@ -654,7 +658,7 @@ namespace Grls
     public class Grlp
     {
         private static String cnString =
-                "Data Source=192.168.135.14;" +
+                "Data Source=192.168.135.77;" +
                 "Initial Catalog=Grls;" +
                 "Integrated Security=True";
         private static SqlConnection cn;
