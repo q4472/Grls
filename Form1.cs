@@ -144,7 +144,7 @@ namespace Grls
     public class Grls
     {
         private static String cnString =
-                "Data Source=192.168.135.77;" +
+                "Data Source=192.168.135.14;" +
                 "Initial Catalog=Grls;" +
                 "Integrated Security=True";
         private static SqlConnection cn;
@@ -658,7 +658,7 @@ namespace Grls
     public class Grlp
     {
         private static String cnString =
-                "Data Source=192.168.135.77;" +
+                "Data Source=192.168.135.14;" +
                 "Initial Catalog=Grls;" +
                 "Integrated Security=True";
         private static SqlConnection cn;
